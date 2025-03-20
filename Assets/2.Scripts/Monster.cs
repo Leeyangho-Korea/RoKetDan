@@ -1,155 +1,155 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.U2D.Aseprite;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Monster : MonoBehaviour
 {
-    public float moveSpeed = -2f;  // ¿ŞÂÊÀ¸·Î ÀÌµ¿
-    public float jumpForce = 5f;  // Á¡ÇÁ Èû
-
+    public float moveSpeed = 2f; // ì™¼ìª½ìœ¼ë¡œ ì´ë™ ì†ë„
+    public float jumpForce = 5f; // ì í”„ í˜
+    public float jumpCooldown = 2f; // ì í”„ ì¿¨íƒ€ì„
+    private bool canJump = true;
+    private bool pushBack = false;
     private Rigidbody2D rb;
-
-    private bool _isLeft_Truck = false;  // Æ®·°°ú ´ê¾Ò´ÂÁö È®ÀÎ
-    private bool _isLeft_Monster = false;  // ¸ó½ºÅÍ¿Í ´ê¾Ò´ÂÁö È®ÀÎ
-    private bool _isUp_Monster = false; // À§¿¡ ¸ó½ºÅÍ°¡ ÀÖ´ÂÁö È®ÀÎ
-    private float jumpCooldown = 2f;  // Á¡ÇÁ Äğ´Ù¿î
-    private float lastJumpTime = 0f;  // ¸¶Áö¸· Á¡ÇÁ ½Ã°£ ÀúÀå
-
-    // ¹Ğ¸®´Â Èû°ú ÃÖ´ë ÀÌµ¿ °Å¸® ¼³Á¤
-    public float pushForce = 4f;  // ¹Ğ¸®´Â Èû
-    public float maxPushDistance = 1.5f; // ÃÖ´ë ¹Ğ·Á³¯ °Å¸®
-    private Vector3 initialPosition; // ½ÃÀÛ À§Ä¡ ÀúÀå
 
     void Start()
     {
-        TryGetComponent<Rigidbody2D>(out rb);
-        Collider2D col = GetComponent<Collider2D>();
-        col.sharedMaterial = Resources.Load<PhysicsMaterial2D>("MonsterMaterial"); // ¹°¸® ÀçÁú Àû¿ë
-
-        initialPosition = transform.position; // ½ÃÀÛ À§Ä¡ ÀúÀå
-    }
-
-    public void Init()
-    {
-        if (rb == null)
-        {
-            rb = gameObject.AddComponent<Rigidbody2D>();
-            rb.isKinematic = false;
-            rb.simulated = true;
-            rb.bodyType = RigidbodyType2D.Dynamic;
-            rb.freezeRotation = true;
-            DEF.LogError("Rigidbody2D ÄÄÆ÷³ÍÆ®¸¦ »õ·Î »ı¼ºÇÕ´Ï´Ù.");
-        }
+        rb = GetComponent<Rigidbody2D>();
     }
 
     void Update()
     {
-
-        if (CanJump())  // ¾ÕÀÌ³ª ¾Æ·¡¿¡ ¸ó½ºÅÍ°¡ ÀÖÀ¸¸é Á¡ÇÁ ½Ãµµ
+        if(pushBack == false)
         {
-            if ( _isLeft_Truck == false && _isLeft_Monster)  // Æ®·°°ú ´êÁö ¾Ê°í ¸ó½ºÅÍ¿Í ´ê¾ÆÀÖ´Ù¸é
-            {
-                Jump();
-            }
-        }
-
-        // À§¿¡ ¸ó½ºÅÍ°¡ ÀÖÀ¸¸é Á¡ÁøÀûÀ¸·Î ¹Ğ·Á³ª°Ô ÇÔ
-        if (_isUp_Monster)
-        {
-            if(_isLeft_Monster)
-            {
-                _isUp_Monster = false;
-            }
-            PushBack();
-        }
-        else
-        {
-            if (_isLeft_Truck == false && _isLeft_Monster == false)  // Æ®·°°ú Ãæµ¹ÇÏ±â Àü±îÁö °è¼Ó ÀÌµ¿
-            {
-                transform.position += Vector3.left * moveSpeed * Time.deltaTime;
-            }
+            // ì™¼ìª½ìœ¼ë¡œ ì´ë™
+            rb.velocity = new Vector2(-moveSpeed, rb.velocity.y);
         }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        Vector2 collisionDirection = collision.contacts[0].point - (Vector2)transform.position;
-        collisionDirection = collisionDirection.normalized; // ¹æÇâ º¤ÅÍ Á¤±ÔÈ­
-     if (collisionDirection.y < -0.5f) // ¾Æ·¡¿¡¼­ Ãæµ¹
+        // íŠ¸ëŸ­ ë˜ëŠ” ëª¬ìŠ¤í„°ì™€ ë‹¿ìœ¼ë©´ ì í”„ (ë‹¨, ëª¬ìŠ¤í„°ëŠ” íŠ¹ì • ë ˆì´ì–´ì—¬ì•¼ í•¨)
+        if ((collision.gameObject.CompareTag("Truck") || IsTargetMonster(collision.gameObject)) && canJump)
         {
+            Jump();
+        }
 
-        }
-        else if (collisionDirection.x > 0.5f) // ¿À¸¥ÂÊ¿¡¼­ Ãæµ¹
+        // ìœ„ì—ì„œ ëª¬ìŠ¤í„°ë¥¼ ë°Ÿì•˜ì„ ë•Œ, ë°ŸíŒ ëª¬ìŠ¤í„°ëŠ” ë’¤ë¡œ ë°€ë¦¼
+        if (IsTargetMonster(collision.gameObject))
         {
+            if (collision.relativeVelocity.y < 0) // ìœ„ì—ì„œ ë°Ÿì•˜ì„ ê²½ìš°
+            {
+                Rigidbody2D otherRb = collision.gameObject.GetComponent<Rigidbody2D>();
 
-        }
-        else if (collisionDirection.x < -0.5f) // ¿ŞÂÊ¿¡¼­ Ãæµ¹
-        {
-            if (collision.gameObject.CompareTag("Truck"))  // Æ®·°°ú Ãæµ¹ÇÏ¸é Á¤Áö
-            {
-                DEF.Log(" Æ®·°°ú Ãæµ¹");
-                _isLeft_Truck = true;
-                StopMoving();
-            }
-            if (collision.gameObject.CompareTag("Monster")) //¸ó½ºÅÍ¿Í Ãæµ¹
-            {
-                DEF.Log("LEFT : ¸ó½ºÅÍ¿Í Ãæµ¹");
-                _isLeft_Monster = true;
-                StopMoving();
-            }
-        }
-        else if(collisionDirection.y > 0.5f) // À§¿¡¼­ Ãæµ¹
-        {
-            if (collision.gameObject.CompareTag("Monster")) //¸ó½ºÅÍ¿Í Ãæµ¹
-            {
-                DEF.Log(" UP : ¸ó½ºÅÍ¿Í Ãæµ¹");
-                _isUp_Monster = true;
+                // ì•„ë˜ ê³µë£¡ì´ ì í”„í•˜ëŠ” ì¤‘ì´ê³ , ìœ„ ê³µë£¡ì´ ìˆë‹¤ë©´ ìœ„ ê³µë£¡ì´ íŠ€ì§€ ì•Šë„ë¡ ì œí•œ
+                if (otherRb.velocity.y > 0 && rb.velocity.y > 0)
+                {
+                    rb.velocity = new Vector2(rb.velocity.x, 0); // ìœ„ ê³µë£¡ ì†ë„ë¥¼ 0ìœ¼ë¡œ ì œí•œ
+                }
+                else
+                {
+                    PushBack();
+                }
+
             }
         }
-    }
-
-    private void OnCollisionExit2D(Collision2D collision)
-    {
-        if (collision.gameObject.CompareTag("Truck"))  // Æ®·°¿¡¼­ ¹ş¾î³ª¸é ÀÌµ¿ Àç°³
-        {
-            _isLeft_Truck = false;
-        }
-        if (collision.gameObject.CompareTag("Monster")) //¸ó½ºÅÍ¿Í Ãæµ¹
-        {
-            _isLeft_Monster = false;
-            _isUp_Monster = false;
-        }
-     
-    }
-
-    void StopMoving()
-    {
-        rb.velocity = Vector2.zero;  // ÀÌµ¿ Á¤Áö
-    }
-
-    bool CanJump()
-    {
-        return GameManager.instance.customTime - lastJumpTime > jumpCooldown;  // Á¡ÇÁ Äğ´Ù¿î Àû¿ë
     }
 
     void Jump()
     {
-        rb.velocity = new Vector2(rb.velocity.x, jumpForce);  // Á¡ÇÁ ½ÇÇà
-        lastJumpTime = GameManager.instance.customTime;  // ¸¶Áö¸· Á¡ÇÁ ½Ã°£ ÀúÀå
+        if (!canJump) return; // ì¤‘ë³µ ì‹¤í–‰ ë°©ì§€
+
+        canJump = false;
+
+        // ê¸°ì¡´ ì†ë„ë¥¼ ì´ˆê¸°í™”í•˜ì—¬ ì˜ˆì¸¡ ë¶ˆê°€ëŠ¥í•œ ë°˜ë™ ì œê±°
+        rb.velocity = new Vector2(rb.velocity.x, 0);
+
+        // `AddForce()` ëŒ€ì‹  `velocity`ë¥¼ ì§ì ‘ ì„¤ì •í•˜ì—¬ ì í”„
+        rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+
+        DEF.Log($"[JUMP] ì ìš©ëœ Y ì†ë„: {rb.velocity.y}");
+
+        StartCoroutine(JumpCooldown());
     }
 
-    // À§¿¡ ¸ó½ºÅÍ°¡ ÀÖ´ÂÁö È®ÀÎÇÏ´Â ÇÔ¼ö
-    bool IsUnderAnotherMonster()
+
+    IEnumerator JumpCooldown()
     {
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.up, 1.5f, LayerMask.GetMask("Monster"));
-        return hit.collider != null;
+        yield return new WaitForSeconds(jumpCooldown);
+        canJump = true;
+    }
+    void FixedUpdate()
+    {
+        // ê³¼í•˜ê²Œ ë†’ì€ ì í”„ë¥¼ ê°ì§€í•˜ë©´ ê°•ì œë¡œ ì œí•œ
+        if (rb.velocity.y > jumpForce)
+        {
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce); // ê°•ì œ ì œí•œ
+            DEF.Log($"[JUMP] ê³¼í•œ ì í”„ ê°ì§€, ì†ë„ ì¡°ì •: {rb.velocity.y}");
+        }
     }
 
-    // À§¿¡ ¸ó½ºÅÍ°¡ ÀÖÀ» °æ¿ì ¹Ğ·Á³ª°Ô ÇÏ´Â ÇÔ¼ö
-    void PushBack()
+    public float pushForce = 2f; // ë’¤ë¡œ ë°€ë¦¬ëŠ” í˜
+
+    public void PushBack()
     {
-        Vector3 targetPosition = new Vector3(initialPosition.x + maxPushDistance, transform.position.y, transform.position.z);
-        transform.position = Vector3.Lerp(transform.position, targetPosition, pushForce * Time.deltaTime);
+        if (pushBack) return;
+
+        pushBack = true;
+
+        // ëª¬ìŠ¤í„° í¬ê¸°ë§Œí¼ë§Œ ì´ë™í•˜ë„ë¡ ë³€ê²½ (ìì—°ìŠ¤ëŸ½ê²Œ ë–¨ì–´ì§€ë„ë¡)
+        float dinoWidth = 1.0f; // ëª¬ìŠ¤í„° í•œ ë§ˆë¦¬ê°€ ì°¨ì§€í•˜ëŠ” ë„ˆë¹„
+        Vector2 targetPosition = rb.position + new Vector2(dinoWidth, 0);
+
+        StartCoroutine(SmoothMove(targetPosition));
+
+        // ë’¤ì— ìˆëŠ” ëª¬ìŠ¤í„°ë„ ê°™ì´ ë°€ë¦¬ë„ë¡ ì²˜ë¦¬
+        Vector2 checkPosition = transform.position + new Vector3(dinoWidth, 0, 0);
+        Vector2 boxSize = new Vector2(dinoWidth, 1f);
+
+        Collider2D[] hits = Physics2D.OverlapBoxAll(checkPosition, boxSize, 0);
+        foreach (var hit in hits)
+        {
+            if (IsTargetMonster(hit.gameObject))
+            {
+                Monster otherMonster = hit.gameObject.GetComponent<Monster>();
+                if (otherMonster != null && !otherMonster.pushBack)
+                {
+                    otherMonster.PushBack();
+                }
+                break;
+            }
+        }
+
+        StartCoroutine(ResetPushBack());
+    }
+
+    // í•œ ì¹¸ì”© ì´ë™í•˜ë„ë¡ ë¶€ë“œëŸ½ê²Œ ì´ë™
+    IEnumerator SmoothMove(Vector2 targetPos)
+    {
+        float duration = 0.3f;
+        float elapsedTime = 0f;
+        Vector2 startPos = rb.position;
+
+        while (elapsedTime < duration)
+        {
+            rb.MovePosition(Vector2.Lerp(startPos, targetPos, elapsedTime / duration));
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        rb.MovePosition(targetPos);
+    }
+
+    // ì¼ì • ì‹œê°„ í›„ pushBack í•´ì œ
+    IEnumerator ResetPushBack()
+    {
+        yield return new WaitForSeconds(0.8f);
+        pushBack = false;
+    }
+
+    // íŠ¹ì • íƒœê·¸ì™€ ë ˆì´ì–´ë¥¼ ë™ì‹œì— í™•ì¸í•˜ëŠ” í•¨ìˆ˜
+    bool IsTargetMonster(GameObject obj)
+    {
+        return obj.CompareTag("Monster") && obj.layer == gameObject.layer;
     }
 }

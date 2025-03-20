@@ -649,7 +649,7 @@ GameObject:
   - component: {fileID: 1902544935285061688}
   - component: {fileID: 1904227760651746487}
   - component: {fileID: 7867786901800377956}
-  - component: {fileID: 4679204963181079346}
+  - component: {fileID: 6987722007646500149}
   m_Layer: 0
   m_Name: ZombieMelee2
   m_TagString: Monster
@@ -706,11 +706,11 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 3
+  m_Mass: 0.5
   m_LinearDrag: 0
   m_AngularDrag: 0.05
   m_GravityScale: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: 085a9621c7ae8614ca7460f054cc9262, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -733,12 +733,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e413857f0737936448c83b7b0787a021, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 2
+  moveSpeed: 5
   jumpForce: 5
-  pushForce: 0.2
-  maxPushDistance: 1.5
---- !u!61 &4679204963181079346
-BoxCollider2D:
+  jumpCooldown: 4
+  pushForce: 2
+--- !u!70 &6987722007646500149
+CapsuleCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -769,19 +769,9 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -0.14, y: 0.5}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0, y: 0}
-    oldSize: {x: 0, y: 0}
-    newSize: {x: 0, y: 0}
-    adaptiveTilingThreshold: 0
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  serializedVersion: 2
-  m_Size: {x: 0.7, y: 1}
-  m_EdgeRadius: 0
+  m_Offset: {x: -0.15, y: 0.5}
+  m_Size: {x: 0.68, y: 1.2}
+  m_Direction: 0
 --- !u!1 &8187671651847557286
 GameObject:
   m_ObjectHideFlags: 0

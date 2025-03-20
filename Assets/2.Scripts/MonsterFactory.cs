@@ -9,10 +9,10 @@ using Random = UnityEngine.Random;
 public class MonsterFactory : MonoBehaviour
 {
     [SerializeField] private Transform[] _monsterPos = new Transform[3];
-    [SerializeField] private GameObject[] _monsterPrefab;  // ¸ó½ºÅÍ ÇÁ¸®ÆÕ
-    [SerializeField] private List<GameObject> _monsterPool = new List<GameObject>();  // ¸ó½ºÅÍ ¸®½ºÆ®
-    public int poolSize = 10;  // Ç®¸µÇÒ ¸ó½ºÅÍ °³¼ö
-    private float _genTime = 0f; // ¸¶Áö¸· Á¨ Å¸ÀÓ
+    [SerializeField] private GameObject[] _monsterPrefab;  // ëª¬ìŠ¤í„° í”„ë¦¬íŒ¹
+    [SerializeField] private List<GameObject> _monsterPool = new List<GameObject>();  // ëª¬ìŠ¤í„° ë¦¬ìŠ¤íŠ¸
+    public int poolSize = 10;  // í’€ë§í•  ëª¬ìŠ¤í„° ê°œìˆ˜
+    private float _genTime = 0f; // ë§ˆì§€ë§‰ ì   íƒ€ì„
 
     void Init()
     {
@@ -21,7 +21,7 @@ public class MonsterFactory : MonoBehaviour
 
     void Start()
     {
-        // ÃÊ±â Ç® »ı¼º
+        // ì´ˆê¸° í’€ ìƒì„±
         //for (int i = 0; i < poolSize; i++)
         //{
         //    int index = i > 3 ? i % 4 : i;
@@ -48,10 +48,10 @@ public class MonsterFactory : MonoBehaviour
     {
         int posIndex = Random.Range(0, _monsterPos.Length);
         GameObject targetMonster = null;
-        // ºñÈ°¼ºÈ­µÈ ¸ó½ºÅÍ Ã£±â
+        // ë¹„í™œì„±í™”ëœ ëª¬ìŠ¤í„° ì°¾ê¸°
         foreach (GameObject monster in _monsterPool)
         {
-            if (!monster.activeInHierarchy) // ºñÈ°¼ºÈ­µÈ ¸ó½ºÅÍ ¹ß°ß
+            if (!monster.activeInHierarchy) // ë¹„í™œì„±í™”ëœ ëª¬ìŠ¤í„° ë°œê²¬
             {
                 monster.SetActive(true);
                 targetMonster = monster;
@@ -67,12 +67,15 @@ public class MonsterFactory : MonoBehaviour
 
     }
 
+    int i = 0;
     private GameObject CreateMonster(int monsterIndex, int posIndex)
     {
-        // ¸ğµç ¸ó½ºÅÍ°¡ È°¼ºÈ­ »óÅÂ¶ó¸é »õ·Î »ı¼º
+        // ëª¨ë“  ëª¬ìŠ¤í„°ê°€ í™œì„±í™” ìƒíƒœë¼ë©´ ìƒˆë¡œ ìƒì„±
         GameObject newMonster = Instantiate(_monsterPrefab[monsterIndex], _monsterPos[posIndex].position, Quaternion.identity);
         _monsterPool.Add(newMonster);
         newMonster.tag = DEF.Tag_Monster;
+        newMonster.name = $"{i}";
+        i++;
         DEF.Log("Create Monster");  
         return newMonster;
     }
@@ -84,18 +87,18 @@ public class MonsterFactory : MonoBehaviour
             DEF.LogError("monster is null");
             return;
         }
-        // ¸ó½ºÅÍ À§Ä¡ ¹× ºÎ¸ğ ¼³Á¤
+        // ëª¬ìŠ¤í„° ìœ„ì¹˜ ë° ë¶€ëª¨ ì„¤ì •
         monster.transform.parent = _monsterPos[posIndex];
         monster.transform.position = _monsterPos[posIndex].position;
 
-        // ¸ó½ºÅÍ ¿ÀºêÁ§Æ®, ½ºÇÁ¶óÀÌÆ® ·¹ÀÌ¾î ¼³Á¤
+        // ëª¬ìŠ¤í„° ì˜¤ë¸Œì íŠ¸, ìŠ¤í”„ë¼ì´íŠ¸ ë ˆì´ì–´ ì„¤ì •
         monster.layer = DEF.MonsterLayer[posIndex];  
-        // ·¹ÀÌ¾î ¼ø¼­ º¯°æ
+        // ë ˆì´ì–´ ìˆœì„œ ë³€ê²½
         SpriteRenderer[] spriteRenderers = monster.GetComponentsInChildren<SpriteRenderer>();
-        string currentLayerName = LayerMask.LayerToName(gameObject.layer); // ÇöÀç ¿ÀºêÁ§Æ®ÀÇ Layer ÀÌ¸§ °¡Á®¿À±â
+        string currentLayerName = LayerMask.LayerToName(monster.gameObject.layer); // í˜„ì¬ ì˜¤ë¸Œì íŠ¸ì˜ Layer ì´ë¦„ ê°€ì ¸ì˜¤ê¸°
         foreach (SpriteRenderer sr in spriteRenderers)
         {
-            sr.sortingLayerName = currentLayerName;  // Sorting Layer º¯°æ
+            sr.sortingLayerName = currentLayerName;  // Sorting Layer ë³€ê²½
         }
     }
 }
