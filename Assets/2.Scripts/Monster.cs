@@ -1,158 +1,139 @@
 using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
 
 public class Monster : MonoBehaviour
 {
-    [SerializeField] HP hp;
-
-    public float moveSpeed = 2f; // 왼쪽으로 이동 속도
-    public float jumpForce = 5f; // 점프 힘
+    [SerializeField] HP hp; // HP 스크립트
+    public float moveSpeed = 2f; // 몬스터 이동 속도
+    public float jumpForce = 5f; // 몬스터 점프 힘
     public float jumpCooldown = 2f; // 점프 쿨타임
-    private bool canJump = true;
-    private bool pushBack = false;
+
+    private bool canJump = true; // 점프 가능 여부
+    private bool pushBack = false; // 뒤로 밀리는 중인지 여부
     private Rigidbody2D rb;
-    Coroutine moveCo = null; // SmoothMove 코루틴을 저장할 변수
+    private Coroutine moveCo = null; // 밀릴 때 실행되는 코루틴 저장 변수
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        if(hp == null)
-        {
-            hp = GetComponentInChildren<HP>();
-        }
+        hp ??= GetComponentInChildren<HP>(); // HP가 없으면 자식 오브젝트에서 찾기
+    }
+
+    private void OnEnable()
+    {
+        canJump = true;
+        pushBack = false;
     }
 
     private void OnDisable()
     {
+        // 몬스터가 비활성화될 때 실행 중이던 밀림 코루틴 정리
         if (moveCo != null)
         {
             StopCoroutine(moveCo);
-            moveCo = null;
         }
     }
 
-    void Update()
+    void FixedUpdate()
     {
-        if(pushBack == false)
+        if (!pushBack)
         {
-            // 왼쪽으로 이동
+            // 일정한 속도로 왼쪽으로 이동
             rb.velocity = new Vector2(-moveSpeed, rb.velocity.y);
         }
 
-#if UNITY_EDITOR
-        if(Input.GetKeyDown(KeyCode.Space))
+        // 점프 높이 제한 (불필요한 높이 상승 방지)
+        if (rb.velocity.y > jumpForce)
         {
-            Damage(10);
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
         }
-#endif
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        // 트럭 또는 몬스터와 닿으면 점프 (단, 몬스터는 특정 레이어여야 함)
+        // 트럭 또는 몬스터를 만나면 점프 (단, 특정 레이어의 몬스터만 가능)
         if ((collision.gameObject.CompareTag("Truck") || IsTargetMonster(collision.gameObject)) && canJump)
         {
             Jump();
         }
 
-        // 위에서 몬스터를 밟았을 때, 밟힌 몬스터는 뒤로 밀림
-        if (IsTargetMonster(collision.gameObject))
+        // 위에서 몬스터를 밟았을 경우 밑에 있는 몬스터를 뒤로 밀기
+        if (IsTargetMonster(collision.gameObject) && collision.relativeVelocity.y < 0)
         {
-            if (collision.relativeVelocity.y < 0) // 위에서 밟았을 경우
+            Rigidbody2D otherRb = collision.gameObject.GetComponent<Rigidbody2D>();
+
+            // 아래 몬스터가 점프하는 중이라면 위에 있는 몬스터는 밀리지 않도록 제한
+            if (otherRb.velocity.y > 0 && rb.velocity.y > 0)
             {
-                Rigidbody2D otherRb = collision.gameObject.GetComponent<Rigidbody2D>();
-
-                // 아래 공룡이 점프하는 중이고, 위 공룡이 있다면 위 공룡이 튀지 않도록 제한
-                if (otherRb.velocity.y > 0 && rb.velocity.y > 0)
-                {
-                    rb.velocity = new Vector2(rb.velocity.x, 0); // 위 공룡 속도를 0으로 제한
-                }
-                else
-                {
-                    PushBack();
-                }
-
+                rb.velocity = new Vector2(rb.velocity.x, 0);
+            }
+            else
+            {
+                PushBack();
             }
         }
     }
 
+    /// <summary>
+    /// 몬스터가 점프하는 동작
+    /// </summary>
     void Jump()
     {
-        if (!canJump) return; // 중복 실행 방지
+        if (!canJump) return;
 
         canJump = false;
-
-        // 기존 속도를 초기화하여 예측 불가능한 반동 제거
-        rb.velocity = new Vector2(rb.velocity.x, 0);
-
-        // `AddForce()` 대신 `velocity`를 직접 설정하여 점프
         rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-
         StartCoroutine(JumpCooldown());
     }
 
-
+    /// <summary>
+    /// 일정 시간이 지나면 다시 점프 가능하도록 설정
+    /// </summary>
     IEnumerator JumpCooldown()
     {
         yield return new WaitForSeconds(jumpCooldown);
         canJump = true;
     }
-    void FixedUpdate()
-    {
-        // 과하게 높은 점프를 감지하면 강제로 제한
-        if (rb.velocity.y > jumpForce)
-        {
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce); // 강제 제한
-        }
-    }
 
-    public float pushForce = 2f; // 뒤로 밀리는 힘
-
+    /// <summary>
+    /// 몬스터가 뒤로 밀리는 동작
+    /// </summary>
     public void PushBack()
     {
         if (pushBack) return;
 
         pushBack = true;
-
-        // 몬스터 크기만큼만 이동하도록 변경 (자연스럽게 떨어지도록)
-        float dinoWidth = 1.0f; // 몬스터 한 마리가 차지하는 너비
-        Vector2 targetPosition = rb.position + new Vector2(dinoWidth, 0);
+        float dinoWidth = 1.0f; // 몬스터 한 마리의 너비
+        Vector2 targetPosition = rb.position + new Vector2(dinoWidth, 0); // 뒤로 이동할 위치
 
         if (moveCo != null)
         {
             StopCoroutine(moveCo);
-            moveCo = null;
         }
-        moveCo =  StartCoroutine(SmoothMove(targetPosition));
+        moveCo = StartCoroutine(SmoothMove(targetPosition));
 
-            // 뒤에 있는 몬스터도 같이 밀리도록 처리
-            Vector2 checkPosition = transform.position + new Vector3(dinoWidth, 0, 0);
-        Vector2 boxSize = new Vector2(dinoWidth, 1f);
+        // 뒤에 있는 몬스터도 같이 밀리도록 처리
+        Vector2 checkPosition = transform.position + new Vector3(dinoWidth, 0, 0);
+        Collider2D[] hits = Physics2D.OverlapBoxAll(checkPosition, new Vector2(dinoWidth, 1f), 0);
 
-        Collider2D[] hits = Physics2D.OverlapBoxAll(checkPosition, boxSize, 0);
         foreach (var hit in hits)
         {
             if (IsTargetMonster(hit.gameObject))
             {
-                Monster otherMonster = hit.gameObject.GetComponent<Monster>();
-                if (otherMonster != null && !otherMonster.pushBack)
-                {
-                    otherMonster.PushBack();
-                }
-                break;
+                hit.gameObject.GetComponent<Monster>()?.PushBack();
+                break; // 한 마리만 밀리도록 설정
             }
         }
 
         StartCoroutine(ResetPushBack());
     }
 
-    // 한 칸씩 이동하도록 부드럽게 이동
+    /// <summary>
+    /// 몬스터가 부드럽게 한 칸씩 이동하는 연출
+    /// </summary>
     IEnumerator SmoothMove(Vector2 targetPos)
     {
-        float duration = 0.3f;
+        float duration = 0.3f; // 이동 시간
         float elapsedTime = 0f;
         Vector2 startPos = rb.position;
 
@@ -166,47 +147,54 @@ public class Monster : MonoBehaviour
         rb.MovePosition(targetPos);
     }
 
-    // 일정 시간 후 pushBack 해제
+    /// <summary>
+    /// 일정 시간이 지나면 밀림 상태 해제
+    /// </summary>
     IEnumerator ResetPushBack()
     {
         yield return new WaitForSeconds(0.8f);
         pushBack = false;
     }
 
-    // 특정 태그와 레이어를 동시에 확인하는 함수
+    /// <summary>
+    /// 특정 오브젝트가 몬스터인지 확인 (태그 + 레이어 체크)
+    /// </summary>
     bool IsTargetMonster(GameObject obj)
     {
-        return obj.CompareTag("Monster") && obj.layer == gameObject.layer && obj.activeSelf == true;
+        return obj.CompareTag("Monster") && obj.layer == gameObject.layer && obj.activeSelf;
     }
 
-
-    public void Damage(int i)
+    /// <summary>
+    /// 몬스터가 피해를 입었을 때 HP 감소 처리
+    /// </summary>
+    public void Damage(int damage)
     {
-        if(hp.gameObject.activeSelf == false)
+        if (!hp.gameObject.activeSelf)
         {
             hp.gameObject.SetActive(true);
         }
-        DEF.Log($"[Monster] 데미지: {i}");
-        hp.SetHP(hp.fillAmount - (float)i / DEF.MonsterHP);
-        if (hp.fillAmount <=0)
-        {
-            Dead();
-        }
+
+        hp.SetHP(hp.fillAmount - (float)damage / DEF.MonsterHP);
+        if (hp.fillAmount <= 0) Dead();
     }
 
+    /// <summary>
+    /// 몬스터 HP 초기화 (최대 HP)
+    /// </summary>
     public void HpInit()
     {
-        if (hp.gameObject.activeSelf == false)
+        if (!hp.gameObject.activeSelf)
         {
             hp.gameObject.SetActive(true);
         }
         hp.SetHP(1.0f);
     }
-    
- 
 
+    /// <summary>
+    /// 몬스터가 사망하면 비활성화
+    /// </summary>
     private void Dead()
     {
-       gameObject.SetActive(false);
+        gameObject.SetActive(false);
     }
- }
+}

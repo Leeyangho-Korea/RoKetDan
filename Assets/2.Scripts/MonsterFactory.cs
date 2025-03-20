@@ -5,7 +5,9 @@ using System.Threading;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
-
+/// <summary>
+/// 게임 내 몬스터를 생성하고 관리하는 역할을 담당하는 클래스입니다.
+/// </summary>
 public class MonsterFactory : MonoBehaviour
 {
     [SerializeField] private Transform[] _monsterPos = new Transform[3];
