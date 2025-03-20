@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 public enum GameState
@@ -12,20 +13,20 @@ public enum GameState
 public static class DEF
 {
     #region ========== Hero ==========
-    // °ø°İ·Â
-    public const int Attack = 10;
-    // Ã¼·Â
+    // ê³µê²©ë ¥
+    public const int Attack = 50;
+    // ì²´ë ¥
     public const int HP = 100;
     #endregion
 
     #region ========== Monster ==========
-    // ¸ó½ºÅÍ ÅÂ±×
+    // ëª¬ìŠ¤í„° íƒœê·¸
     public const string Tag_Monster = "Monster";
-    // °ø°İ·Â
+    // ê³µê²©ë ¥
     public const int MonsterAttack = 5;
-    // Ã¼·Â
-    public const int MonsterHP = 50;
-    // ¸ó½ºÅÍ Á¨ ½Ã°£
+    // ì²´ë ¥
+    public const int MonsterHP = 100;
+    // ëª¬ìŠ¤í„° ì   ì‹œê°„
     public const float MonsterGenTime = 1f;
 
     public static Dictionary<int, int> MonsterLayer = new Dictionary<int, int>
@@ -37,7 +38,7 @@ public static class DEF
     #endregion
 
     #region ========== Game ==========  
-    // ±âº» ÁøÇà ¼Óµµ
+    // ê¸°ë³¸ ì§„í–‰ ì†ë„
     public const int GameSpeed = 2;
     #endregion
 

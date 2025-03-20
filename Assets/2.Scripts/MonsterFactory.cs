@@ -55,6 +55,7 @@ public class MonsterFactory : MonoBehaviour
             {
                 monster.SetActive(true);
                 targetMonster = monster;
+                break;
             }
         }
         if(targetMonster == null)
@@ -76,7 +77,6 @@ public class MonsterFactory : MonoBehaviour
         newMonster.tag = DEF.Tag_Monster;
         newMonster.name = $"{i}";
         i++;
-        DEF.Log("Create Monster");  
         return newMonster;
     }
 
@@ -100,5 +100,7 @@ public class MonsterFactory : MonoBehaviour
         {
             sr.sortingLayerName = currentLayerName;  // Sorting Layer 변경
         }
+        monster.GetComponent<Monster>().HpInit();
+
     }
 }

@@ -1,20 +1,37 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 
 public class Monster : MonoBehaviour
 {
+    [SerializeField] HP hp;
+
     public float moveSpeed = 2f; // 왼쪽으로 이동 속도
     public float jumpForce = 5f; // 점프 힘
     public float jumpCooldown = 2f; // 점프 쿨타임
     private bool canJump = true;
     private bool pushBack = false;
     private Rigidbody2D rb;
+    Coroutine moveCo = null; // SmoothMove 코루틴을 저장할 변수
 
-    void Start()
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        if(hp == null)
+        {
+            hp = GetComponentInChildren<HP>();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (moveCo != null)
+        {
+            StopCoroutine(moveCo);
+            moveCo = null;
+        }
     }
 
     void Update()
@@ -24,6 +41,13 @@ public class Monster : MonoBehaviour
             // 왼쪽으로 이동
             rb.velocity = new Vector2(-moveSpeed, rb.velocity.y);
         }
+
+#if UNITY_EDITOR
+        if(Input.GetKeyDown(KeyCode.Space))
+        {
+            Damage(10);
+        }
+#endif
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -67,8 +91,6 @@ public class Monster : MonoBehaviour
         // `AddForce()` 대신 `velocity`를 직접 설정하여 점프
         rb.velocity = new Vector2(rb.velocity.x, jumpForce);
 
-        DEF.Log($"[JUMP] 적용된 Y 속도: {rb.velocity.y}");
-
         StartCoroutine(JumpCooldown());
     }
 
@@ -84,7 +106,6 @@ public class Monster : MonoBehaviour
         if (rb.velocity.y > jumpForce)
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce); // 강제 제한
-            DEF.Log($"[JUMP] 과한 점프 감지, 속도 조정: {rb.velocity.y}");
         }
     }
 
@@ -100,10 +121,15 @@ public class Monster : MonoBehaviour
         float dinoWidth = 1.0f; // 몬스터 한 마리가 차지하는 너비
         Vector2 targetPosition = rb.position + new Vector2(dinoWidth, 0);
 
-        StartCoroutine(SmoothMove(targetPosition));
+        if (moveCo != null)
+        {
+            StopCoroutine(moveCo);
+            moveCo = null;
+        }
+        moveCo =  StartCoroutine(SmoothMove(targetPosition));
 
-        // 뒤에 있는 몬스터도 같이 밀리도록 처리
-        Vector2 checkPosition = transform.position + new Vector3(dinoWidth, 0, 0);
+            // 뒤에 있는 몬스터도 같이 밀리도록 처리
+            Vector2 checkPosition = transform.position + new Vector3(dinoWidth, 0, 0);
         Vector2 boxSize = new Vector2(dinoWidth, 1f);
 
         Collider2D[] hits = Physics2D.OverlapBoxAll(checkPosition, boxSize, 0);
@@ -150,6 +176,37 @@ public class Monster : MonoBehaviour
     // 특정 태그와 레이어를 동시에 확인하는 함수
     bool IsTargetMonster(GameObject obj)
     {
-        return obj.CompareTag("Monster") && obj.layer == gameObject.layer;
+        return obj.CompareTag("Monster") && obj.layer == gameObject.layer && obj.activeSelf == true;
     }
-}
+
+
+    public void Damage(int i)
+    {
+        if(hp.gameObject.activeSelf == false)
+        {
+            hp.gameObject.SetActive(true);
+        }
+        DEF.Log($"[Monster] 데미지: {i}");
+        hp.SetHP(hp.fillAmount - (float)i / DEF.MonsterHP);
+        if (hp.fillAmount <=0)
+        {
+            Dead();
+        }
+    }
+
+    public void HpInit()
+    {
+        if (hp.gameObject.activeSelf == false)
+        {
+            hp.gameObject.SetActive(true);
+        }
+        hp.SetHP(1.0f);
+    }
+    
+ 
+
+    private void Dead()
+    {
+       gameObject.SetActive(false);
+    }
+ }
